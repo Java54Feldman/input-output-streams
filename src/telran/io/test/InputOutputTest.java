@@ -17,7 +17,8 @@ class InputOutputTest {
 	private static final String STREAM_FILE = "stream-file";
 	private static final String HELLO = "Hello";
 	private static final String WRITER_FILE = "writer-file";
-	
+	protected static final int OFFSET = 4;
+
 	@AfterAll
 	static void tearDown() throws IOException {
 		Files.deleteIfExists(Path.of(STREAM_FILE));
@@ -25,23 +26,24 @@ class InputOutputTest {
 	}
 
 	@Test
-	//Testing PrintStream class
-	//creates PrintStream object and connects it to file
+	// Testing PrintStream class
+	// creates PrintStream object and connects it to file
 	void printStreamTest() throws Exception {
-		//try resources block allows automatic closing existing from the buffer
+		// try resources block allows automatic closing after exiting from the block
 		try (PrintStream printStream = new PrintStream(STREAM_FILE)) {
 			printStream.println(HELLO);
 		}
 		try (BufferedReader reader = new BufferedReader(new FileReader(STREAM_FILE))) {
 			assertEquals(HELLO, reader.readLine());
-			assertNull(reader.readLine()); // stream закончен
+			assertNull(reader.readLine()); // stream finished
 		}
 	}
+
 	@Test
-	//The same test as for PrintStream but for PrintWriter
-	//The difference between PrintStream and PrintWriter is that
-	//PrintStream puts line immediately while PrintWriter puts line into a buffer
-	//The buffer flushing is happening after closing the stream
+	// The same test as for PrintStream but for PrintWriter
+	// The difference between PrintStream and PrintWriter is that
+	// PrintStream puts line immediately while PrintWriter puts line into a buffer
+	// The buffer flushing is happening after closing the stream
 	void printWriterTest() throws Exception {
 		try (PrintWriter printWriter = new PrintWriter(WRITER_FILE)) {
 			printWriter.println(HELLO);
@@ -51,61 +53,68 @@ class InputOutputTest {
 			assertNull(reader.readLine());
 		}
 	}
+
 	@Test
 	void pathTest() {
 		Path pathCurrent = Path.of(".");
 //		System.out.printf("%s - path \".\"\n", pathCurrent);
-//		System.out.printf("%s - normolized path \".\"\n", pathCurrent.normalize());
-//		System.out.printf("%s - normolized absolute path \".\"\n", 
+//		System.out.printf("%s - normalized path \".\"\n", pathCurrent.normalize());
+//		System.out.printf("%s - normalized absolute path \".\"\n", 
 //				pathCurrent.toAbsolutePath().normalize());
-		System.out.printf("%s - %s\n", 
-				pathCurrent.toAbsolutePath().normalize(), 
+		System.out.printf("%s - %s\n", pathCurrent.toAbsolutePath().normalize(),
 				Files.isDirectory(pathCurrent) ? "directory" : "file");
 		pathCurrent = pathCurrent.toAbsolutePath().normalize();
 		System.out.printf("count of levels is %d\n", pathCurrent.getNameCount());
 	}
+
 	@Test
 	void printDirectoryTest() throws IOException {
 		printDirectory("..", 3);
 	}
 
 	private void printDirectory(String dirPathStr, int depth) throws IOException {
-		// TODO
-		//print directory content in the format with offset according to the level
-		//if depth == -1 all levels should be printed out
-		//<name> - <dir / file>
-		//		<name>
-		//using Files.walkFileTree with maxDepth
+		// print directory content in the format with offset according to the level
+		// if depth == -1 all levels should be printed out
+		// <name> - <dir / file>
+		// 		<name>
+		// using Files.walkFileTree with maxDepth
 		Path path = Path.of(dirPathStr).toAbsolutePath().normalize();
+		if (depth == -1) {
+			depth = Integer.MAX_VALUE;
+		}
 		Files.walkFileTree(path, new HashSet<>(), depth, new FileVisitor<Path>() {
+			private int level = 0;
 
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				System.out.printf(" ".repeat(level * OFFSET) + "%s - dir\n", dir.getFileName());
+				level++;
+				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				System.out.printf(" ".repeat(level * OFFSET) + "%s - file\n", file.getFileName());
+				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				System.err.println("File access error: " + file.getFileName() + " - " + exc.getMessage());
+				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				level--;
+			    if (exc != null) {
+			        System.err.println("Error when visiting directory: " + dir.getFileName() + " - " + exc.getMessage());
+			    }
+				return FileVisitResult.CONTINUE;
 			}
-			
+
 		});
-		
-				
+
 	}
 
 }

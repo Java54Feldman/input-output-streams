@@ -17,7 +17,7 @@ class InputOutputTest {
 	private static final String STREAM_FILE = "stream-file";
 	private static final String HELLO = "Hello";
 	private static final String WRITER_FILE = "writer-file";
-	protected static final int OFFSET = 4;
+	protected static final int SPACES_PER_DEPTH_LEVEL = 3;
 
 	@AfterAll
 	static void tearDown() throws IOException {
@@ -73,48 +73,58 @@ class InputOutputTest {
 	}
 
 	private void printDirectory(String dirPathStr, int depth) throws IOException {
-		// print directory content in the format with offset according to the level
-		// if depth == -1 all levels should be printed out
+		//print directory content in the format with offset according to the level
+		//if depth == -1 all levels should be printed out
 		// <name> - <dir / file>
-		// 		<name>
-		// using Files.walkFileTree with maxDepth
-		Path path = Path.of(dirPathStr).toAbsolutePath().normalize();
-		if (depth == -1) {
-			depth = Integer.MAX_VALUE;
+		//      <name> 
+		//using FIles.walkFileTree
+		Path pathParam = Path.of(dirPathStr);
+		if (!Files.isDirectory(pathParam)) {
+			throw new IllegalArgumentException("not directory");
 		}
-		Files.walkFileTree(path, new HashSet<>(), depth, new FileVisitor<Path>() {
-			private int level = 0;
+		Path path = pathParam.toAbsolutePath().normalize();
+		int count = path.getNameCount();
+		System.out.println("directory: " + path);
+		Files.walkFileTree(path, new HashSet<>(), depth <= 0 ? Integer.MAX_VALUE : depth, new FileVisitor<Path>() {
 
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-				System.out.printf(" ".repeat(level * OFFSET) + "%s - dir\n", dir.getFileName());
-				level++;
+				if (!Files.isSameFile(path, dir)) {
+					printPathWithOffset(dir);
+				}
 				return FileVisitResult.CONTINUE;
+			}
+
+			private void printPathWithOffset(Path path) {
+				System.out.printf("%s%s - %s\n", " ".repeat(getSpacesNumber(path)),
+						path.getFileName(), Files.isDirectory(path) ? "dir" : "file");
+				
+			}
+
+			private int getSpacesNumber(Path path) {
+				return (path.getNameCount() - count) * SPACES_PER_DEPTH_LEVEL;
 			}
 
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				System.out.printf(" ".repeat(level * OFFSET) + "%s - file\n", file.getFileName());
+				printPathWithOffset(file);
 				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-				System.err.println("File access error: " + file.getFileName() + " - " + exc.getMessage());
+				System.err.println("error: " + exc);
 				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				level--;
-			    if (exc != null) {
-			        System.err.println("Error when visiting directory: " + dir.getFileName() + " - " + exc.getMessage());
-			    }
+				if (exc != null) {
+					System.err.println("error: " + exc);
+				}
 				return FileVisitResult.CONTINUE;
 			}
-
 		});
-
+		
 	}
-
 }
